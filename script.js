@@ -112,6 +112,24 @@ messageInput.addEventListener("keypress", (e) => {
   if (e.key === "Enter") sendMessage();
 });
 
+// --- FIX MOBILE KEYBOARD PANNING ---
+// Forces the browser to keep the navbar at the top when the keyboard opens
+messageInput.addEventListener("focus", () => {
+  setTimeout(() => {
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }, 100);
+});
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", () => {
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  });
+}
+
 // --- 2.5. VOICE NOTE LOGIC ---
 let mediaRecorder;
 let audioChunks = [];
