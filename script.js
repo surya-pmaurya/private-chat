@@ -388,10 +388,82 @@ function loadMessages() {
 
       // If the message contains an audioURL, render the audio player
       if (data.audioUrl) {
+        const audioContainer = document.createElement("div");
+        audioContainer.classList.add("voice-note-container");
+
+        const playBtn = document.createElement("button");
+        playBtn.classList.add("voice-note-play-btn");
+        playBtn.innerHTML = "▶";
+
+        const slider = document.createElement("input");
+        slider.type = "range";
+        slider.min = "0";
+        slider.max = "100";
+        slider.value = "0";
+        slider.classList.add("voice-note-slider");
+        
+        // Prevent slider scrubbing from triggering the swipe-to-reply feature
+        slider.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+        slider.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true });
+
+        const timerSpan = document.createElement("span");
+        timerSpan.classList.add("voice-note-timer");
+        timerSpan.innerText = "0:00";
+
         const audioEl = document.createElement("audio");
-        audioEl.controls = true;
         audioEl.src = data.audioUrl;
-        msgDiv.appendChild(audioEl);
+
+        const formatTime = (seconds) => {
+          if (isNaN(seconds) || !isFinite(seconds)) return "0:00";
+          const m = Math.floor(seconds / 60);
+          const s = Math.floor(seconds % 60);
+          return `${m}:${s < 10 ? '0' : ''}${s}`;
+        };
+
+        audioEl.addEventListener("loadedmetadata", () => {
+          if (audioEl.duration && isFinite(audioEl.duration)) {
+            timerSpan.innerText = formatTime(audioEl.duration);
+          }
+        });
+
+        playBtn.addEventListener("click", () => {
+          if (audioEl.paused) {
+            audioEl.play();
+            playBtn.innerHTML = "⏸";
+          } else {
+            audioEl.pause();
+            playBtn.innerHTML = "▶";
+          }
+        });
+
+        audioEl.addEventListener("timeupdate", () => {
+          if (audioEl.duration && isFinite(audioEl.duration)) {
+            slider.value = (audioEl.currentTime / audioEl.duration) * 100;
+          }
+          timerSpan.innerText = formatTime(audioEl.currentTime);
+        });
+
+        slider.addEventListener("input", (e) => {
+          if (audioEl.duration && isFinite(audioEl.duration)) {
+            audioEl.currentTime = (e.target.value / 100) * audioEl.duration;
+          }
+        });
+
+        audioEl.addEventListener("ended", () => {
+          playBtn.innerHTML = "▶";
+          slider.value = 0;
+          if (audioEl.duration && isFinite(audioEl.duration)) {
+            timerSpan.innerText = formatTime(audioEl.duration);
+          } else {
+            timerSpan.innerText = "0:00";
+          }
+        });
+
+        audioContainer.appendChild(playBtn);
+        audioContainer.appendChild(slider);
+        audioContainer.appendChild(timerSpan);
+        audioContainer.appendChild(audioEl); // Hidden element driving the audio
+        msgDiv.appendChild(audioContainer);
       }
 
       // Time & Meta logic for Message
