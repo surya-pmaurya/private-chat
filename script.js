@@ -33,6 +33,10 @@ const chatMessages = document.getElementById("chat-messages");
 const logoutBtn = document.getElementById("logout-btn");
 const themeToggle = document.getElementById("theme-toggle");
 const reactionMenu = document.getElementById("reaction-menu");
+const messageOptionsMenu = document.getElementById("message-options-menu");
+const menuReply = document.getElementById("menu-reply");
+const menuCopy = document.getElementById("menu-copy");
+const menuDelete = document.getElementById("menu-delete");
 const emojiPicker = document.getElementById("emoji-picker");
 const moreEmojisBtn = document.getElementById("more-emojis-btn");
 const typingIndicator = document.getElementById("typing-indicator");
@@ -43,6 +47,7 @@ const cancelReplyBtn = document.getElementById("cancel-reply-btn");
 let currentUser = null;
 let unreadMessages = [];
 let activeMessageIdForReaction = null;
+let activeMessageForMenu = null;
 let replyingToMessage = null;
 let typingTimeout = null;
 let isTyping = false;
@@ -286,12 +291,45 @@ moreEmojisBtn.addEventListener("click", (e) => {
   emojiPicker.classList.toggle("hidden");
 });
 
+// --- 2.9 OPTIONS MENU LOGIC ---
+menuReply.addEventListener("click", () => {
+  if (activeMessageForMenu) {
+    replyingToMessage = activeMessageForMenu;
+    replyText.innerText = activeMessageForMenu.text;
+    replyPreview.classList.remove("hidden");
+    messageInput.focus();
+    messageOptionsMenu.classList.add("hidden");
+  }
+});
+
+menuCopy.addEventListener("click", async () => {
+  if (activeMessageForMenu) {
+    try {
+      await navigator.clipboard.writeText(activeMessageForMenu.text);
+    } catch (err) {
+      console.error("Failed to copy text", err);
+    }
+    messageOptionsMenu.classList.add("hidden");
+  }
+});
+
+menuDelete.addEventListener("click", async () => {
+  if (activeMessageForMenu) {
+    await deleteDoc(doc(db, "messages", activeMessageForMenu.id));
+    messageOptionsMenu.classList.add("hidden");
+  }
+});
+
 // Hide menus when clicking elsewhere
 document.addEventListener("click", (e) => {
   if (!reactionMenu.classList.contains("hidden") && !reactionMenu.contains(e.target) && !emojiPicker.contains(e.target)) {
     reactionMenu.classList.add("hidden"); // Hide if clicking anywhere else
     emojiPicker.classList.add("hidden");
     activeMessageIdForReaction = null;
+  }
+  if (!messageOptionsMenu.classList.contains("hidden") && !messageOptionsMenu.contains(e.target)) {
+    messageOptionsMenu.classList.add("hidden");
+    activeMessageForMenu = null;
   }
 });
 
@@ -378,7 +416,7 @@ function loadMessages() {
         if (!startX) return;
         currentX = e.touches[0].clientX;
         const diff = currentX - startX;
-        if (diff > 0 && diff < 80) { // Limit swipe to 80px strictly to the right
+        if (Math.abs(diff) > 0 && Math.abs(diff) < 80) { // Limit swipe to 80px in either direction
           msgDiv.style.transform = `translateX(${diff}px)`;
           msgDiv.style.transition = 'none'; // Disable CSS transition for live drag
         }
@@ -392,7 +430,7 @@ function loadMessages() {
         msgDiv.style.transform = ``;
         msgDiv.style.transition = ''; 
         
-        if (diff > 50) { // If dragged more than 50px, activate the reply
+        if (Math.abs(diff) > 50) { // If dragged more than 50px in either direction, activate the reply
           replyingToMessage = { id: docSnap.id, text: data.text, user: data.user };
           replyText.innerText = data.text;
           replyPreview.classList.remove("hidden");
@@ -434,6 +472,34 @@ function loadMessages() {
         };
         msgDiv.appendChild(badge);
       }
+
+      // Render 3-Dot Options Menu Button
+      const optionsBtn = document.createElement("span");
+      optionsBtn.classList.add("msg-options-btn");
+      optionsBtn.innerText = "⋮";
+      optionsBtn.onclick = (e) => {
+        e.stopPropagation();
+        activeMessageForMenu = { id: docSnap.id, text: data.text, user: data.user };
+        
+        // Show delete only for the sender
+        if (data.user === currentUser.email) menuDelete.style.display = "block";
+        else menuDelete.style.display = "none";
+
+        const rect = optionsBtn.getBoundingClientRect();
+        let left = rect.right; // Shift popup menu to spawn on the right side
+        if (left + 150 > window.innerWidth) left = window.innerWidth - 160; // Flip left if off-screen
+        let top = rect.bottom;
+        if (top + 160 > window.innerHeight) top = rect.top - 160; // Keep on screen
+        
+        messageOptionsMenu.style.left = `${left}px`;
+        messageOptionsMenu.style.top = `${top}px`;
+        messageOptionsMenu.classList.remove("hidden");
+        
+        // Hide other menus just in case
+        reactionMenu.classList.add("hidden");
+        emojiPicker.classList.add("hidden");
+      };
+      msgDiv.appendChild(optionsBtn);
 
       // Check if I sent it, or my friend sent it
       if (data.user === currentUser.email) {

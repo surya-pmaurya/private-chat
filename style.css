@@ -147,6 +147,7 @@ body {
     background-color: #3797EF;
     color: white;
     border-bottom-right-radius: 4px;
+    margin-right: 25px; /* Makes room for the 3-dot button on the right edge */
 }
 
 .message.received {
@@ -203,6 +204,20 @@ body {
     text-shadow: 0 1px 1px rgba(0,0,0,0.2); 
 }
 
+/* Options Menu Button */
+.msg-options-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #888;
+    font-size: 20px;
+    font-weight: bold;
+    padding: 5px 10px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
 /* Delete Button */
 .delete-btn {
     position: absolute;
@@ -220,6 +235,33 @@ body {
 .delete-btn:hover {
     opacity: 1;
 }
+.msg-options-btn:hover { opacity: 1; }
+.message.sent .msg-options-btn { right: -30px; }
+.message.received .msg-options-btn { right: -30px; }
+
+/* Message Options Context Menu */
+#message-options-menu {
+    position: fixed;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 120px;
+}
+#message-options-menu div {
+    padding: 12px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    color: #333;
+    transition: background 0.2s;
+}
+#message-options-menu div:last-child { border-bottom: none; }
+#message-options-menu div:hover { background: #f5f5f5; }
+#menu-delete { color: #ed4956 !important; }
 
 /* Reaction Menu */
 #reaction-menu {
@@ -435,6 +477,10 @@ body.dark-theme .date-separator {
     background-color: rgba(255, 255, 255, 0.1);
     color: #bbb;
 }
+
+body.dark-theme #message-options-menu { background: #2c2c2c; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+body.dark-theme #message-options-menu div { border-color: #444; color: #e0e0e0; }
+body.dark-theme #message-options-menu div:hover { background: #3c3c3c; }
 
 body.dark-theme #reaction-menu { background: #2c2c2c; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
 body.dark-theme #emoji-picker { background: #2c2c2c; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
