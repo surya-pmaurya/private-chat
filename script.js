@@ -16,6 +16,7 @@ import {
   updateDoc,
   deleteDoc,
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { emojiList } from "./emoji.js";
 
 // Get DOM Elements
 const loginScreen = document.getElementById("login-screen");
@@ -31,15 +32,33 @@ const messageInput = document.getElementById("message-input");
 const chatMessages = document.getElementById("chat-messages");
 const logoutBtn = document.getElementById("logout-btn");
 const presenceIndicator = document.getElementById("presence-indicator");
+const themeToggle = document.getElementById("theme-toggle");
+const reactionMenu = document.getElementById("reaction-menu");
+const emojiPicker = document.getElementById("emoji-picker");
+const moreEmojisBtn = document.getElementById("more-emojis-btn");
 
 let currentUser = null;
 let unreadMessages = [];
+let activeMessageIdForReaction = null;
 
 // --- TOGGLE PASSWORD VISIBILITY ---
 togglePasswordBtn.addEventListener("click", () => {
   const isPassword = passwordInput.getAttribute("type") === "password";
   passwordInput.setAttribute("type", isPassword ? "text" : "password");
   togglePasswordBtn.innerText = isPassword ? "🙈" : "👁️";
+});
+
+// --- THEME TOGGLE LOGIC ---
+if (localStorage.getItem("theme") === "dark") {
+  document.body.classList.add("dark-theme");
+  themeToggle.innerText = "☀️";
+}
+
+themeToggle.addEventListener("click", () => {
+  document.body.classList.toggle("dark-theme");
+  const isDark = document.body.classList.contains("dark-theme");
+  themeToggle.innerText = isDark ? "☀️" : "🌙";
+  localStorage.setItem("theme", isDark ? "dark" : "light");
 });
 
 // --- 1. LOGIN LOGIC ---
@@ -148,6 +167,62 @@ micBtn.addEventListener("click", async () => {
   }
 });
 
+// --- 2.8 REACTION MENU LOGIC ---
+reactionMenu.querySelectorAll(".quick-emoji").forEach(emoji => {
+  emoji.addEventListener("click", async () => {
+    if (activeMessageIdForReaction) {
+      await updateDoc(doc(db, "messages", activeMessageIdForReaction), {
+        reaction: emoji.innerText
+      });
+      reactionMenu.classList.add("hidden");
+      emojiPicker.classList.add("hidden");
+      activeMessageIdForReaction = null;
+    }
+  });
+});
+
+// Populate the full emoji picker dynamically
+emojiList.forEach(emojiChar => {
+  const span = document.createElement("span");
+  span.innerText = emojiChar;
+  span.addEventListener("click", async () => {
+    if (activeMessageIdForReaction) {
+      await updateDoc(doc(db, "messages", activeMessageIdForReaction), {
+        reaction: emojiChar
+      });
+      reactionMenu.classList.add("hidden");
+      emojiPicker.classList.add("hidden");
+      activeMessageIdForReaction = null;
+    }
+  });
+  emojiPicker.appendChild(span);
+});
+
+// Toggle the extended emoji picker when clicking the + button
+moreEmojisBtn.addEventListener("click", (e) => {
+  e.stopPropagation(); // Prevent the document click listener from hiding it immediately
+  const rect = reactionMenu.getBoundingClientRect();
+  
+  let left = rect.left;
+  if (left + 260 > window.innerWidth) left = window.innerWidth - 270; // Keep within screen bounds
+  emojiPicker.style.left = `${left}px`;
+
+  // Position above or below the reaction menu based on available screen space
+  if (rect.bottom + 210 > window.innerHeight) emojiPicker.style.top = `${rect.top - 210}px`;
+  else emojiPicker.style.top = `${rect.bottom + 10}px`;
+
+  emojiPicker.classList.toggle("hidden");
+});
+
+// Hide menus when clicking elsewhere
+document.addEventListener("click", (e) => {
+  if (!reactionMenu.classList.contains("hidden") && !reactionMenu.contains(e.target) && !emojiPicker.contains(e.target)) {
+    reactionMenu.classList.add("hidden"); // Hide if clicking anywhere else
+    emojiPicker.classList.add("hidden");
+    activeMessageIdForReaction = null;
+  }
+});
+
 // --- 3. LOAD MESSAGES LOGIC ---
 function loadMessages() {
   // Query messages ordered by time
@@ -208,6 +283,36 @@ function loadMessages() {
       timeSpan.classList.add("message-time");
       timeSpan.innerText = timeString;
       metaDiv.appendChild(timeSpan);
+
+      // Reaction Context Menu (Long Press / Right Click)
+      msgDiv.addEventListener("contextmenu", (e) => {
+        e.preventDefault(); // Prevent standard right-click menu
+        activeMessageIdForReaction = docSnap.id;
+        
+        const rect = msgDiv.getBoundingClientRect();
+        let left = rect.left + (rect.width / 2) - 140; // Center the slightly wider menu (approx 280px)
+        left = Math.max(10, Math.min(left, window.innerWidth - 290)); // Increase screen boundary so it doesn't push off the right side
+        
+        let top = rect.top - 55; // Show above message
+        if (top < 60) top = rect.bottom + 10; // If too close to top edge, show below message
+        
+        reactionMenu.style.left = `${left}px`;
+        reactionMenu.style.top = `${top}px`;
+        reactionMenu.classList.remove("hidden");
+        emojiPicker.classList.add("hidden"); // Reset the expanded picker if open
+      });
+
+      // Render Reaction Badge
+      if (data.reaction) {
+        const badge = document.createElement("div");
+        badge.classList.add("reaction-badge");
+        badge.innerText = data.reaction;
+        badge.onclick = async (e) => {
+          e.stopPropagation(); // Prevent bubbling up
+          await updateDoc(doc(db, "messages", docSnap.id), { reaction: null }); // Removes reaction if clicked again
+        };
+        msgDiv.appendChild(badge);
+      }
 
       // Check if I sent it, or my friend sent it
       if (data.user === currentUser.email) {

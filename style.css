@@ -8,9 +8,11 @@
 body {
     background-color: #f5f5f5;
     height: 100vh;
+    height: 100dvh; /* Fixes the mobile browser address bar cutting off the bottom */
     display: flex;
     flex-direction: column;
     overflow: hidden; /* Prevents whole-page scrolling, keeping it app-like */
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .screen {
@@ -41,10 +43,11 @@ body {
     display: flex;
     flex-direction: column;
     gap: 15px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .login-box h2 { text-align: center; color: #333; margin-bottom: 10px; }
-.login-box input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; outline: none;}
+.login-box input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; outline: none; transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;}
 .login-box button { padding: 12px; background: #007AFF; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
 #error-msg { color: #ed4956; font-size: 14px; text-align: center; }
 
@@ -80,10 +83,19 @@ body {
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid #dbdbdb;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 #chat-header h3 { font-size: 18px; }
+#theme-toggle { background: none; border: none; font-size: 18px; cursor: pointer; transition: transform 0.3s ease; }
+#theme-toggle:hover { transform: scale(1.1); }
 #logout-btn { background: none; border: none; color: #ed4956; font-weight: bold; font-size: 14px; cursor: pointer; }
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
 
 #chat-messages {
     flex: 1;
@@ -93,6 +105,7 @@ body {
     flex-direction: column;
     gap: 12px;
     background: #fff;
+    transition: background-color 0.3s ease;
 }
 
 /* Instagram Style Message Bubbles */
@@ -106,6 +119,9 @@ body {
     line-height: 1.4;
     display: flex;
     flex-direction: column;
+    -webkit-user-select: none; /* Prevents text highlighting on long-press */
+    user-select: none;
+    -webkit-touch-callout: none; /* Prevents iOS default popups */
 }
 
 /* Audio Player Styling */
@@ -128,6 +144,7 @@ body {
     background-color: #EFEFEF;
     color: black;
     border-bottom-left-radius: 4px;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Date Separator */
@@ -194,6 +211,81 @@ body {
     opacity: 1;
 }
 
+/* Reaction Menu */
+#reaction-menu {
+    position: fixed;
+    background: white;
+    border-radius: 30px;
+    padding: 8px 12px; /* Slightly reduced padding */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    display: flex;
+    gap: 12px; /* Slightly reduced gap so they all fit neatly */
+    z-index: 1000;
+    transition: background-color 0.3s ease;
+    max-width: 90vw; /* Ensures it never stretches beyond the phone screen */
+    overflow-x: auto;
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+#reaction-menu::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+}
+
+#reaction-menu span {
+    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+#reaction-menu span:hover {
+    transform: scale(1.3);
+}
+
+/* Extended Emoji Picker */
+#emoji-picker {
+    position: fixed;
+    background: white;
+    border-radius: 15px;
+    padding: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    max-height: 200px;
+    width: 260px;
+    overflow-y: auto;
+    overflow-x: hidden; /* Prevents accidental horizontal scrolling */
+    z-index: 1001;
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+#emoji-picker::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+}
+
+#emoji-picker span {
+    font-size: 24px;
+    cursor: pointer;
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+#emoji-picker span:hover { transform: scale(1.3); }
+
+/* Reaction Badge */
+.reaction-badge {
+    position: absolute;
+    bottom: -12px;
+    background: white;
+    border-radius: 12px;
+    padding: 2px 5px;
+    font-size: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    border: 1px solid #dbdbdb;
+    cursor: pointer;
+    z-index: 10;
+}
+.message.sent .reaction-badge { right: 15px; }
+.message.received .reaction-badge { left: 15px; }
+
 /* Snapchat Style Presence Indicator */
 #presence-indicator {
     color: white;
@@ -213,12 +305,14 @@ body {
 
 /* Input Area */
 #chat-input-area {
+    flex-shrink: 0; /* Ensures the input area never gets squished off-screen */
     display: flex;
     padding: 10px 15px;
     background: white;
     border-top: 1px solid #dbdbdb;
     /* safe-area ensures it doesn't get covered by iPhone swipe bars */
     padding-bottom: max(10px, env(safe-area-inset-bottom)); 
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 #message-input {
@@ -228,6 +322,7 @@ body {
     padding: 10px 15px;
     font-size: 16px;
     outline: none;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 #mic-btn {
@@ -255,3 +350,38 @@ body {
     50% { transform: scale(1.15); }
     100% { transform: scale(1); }
 }
+
+/* --- DARK THEME OVERRIDES --- */
+body.dark-theme { background-color: #121212; color: #e0e0e0; }
+
+body.dark-theme .login-box,
+body.dark-theme #chat-header,
+body.dark-theme #chat-messages,
+body.dark-theme #chat-input-area {
+    background: #1e1e1e;
+    border-color: #333;
+}
+
+body.dark-theme .login-box h2,
+body.dark-theme #chat-header h3 { color: #e0e0e0; }
+
+body.dark-theme .login-box input,
+body.dark-theme #message-input {
+    background-color: #2c2c2c;
+    color: #ffffff;
+    border-color: #444;
+}
+
+body.dark-theme .message.received {
+    background-color: #2c2c2c;
+    color: #e0e0e0;
+}
+
+body.dark-theme .date-separator {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #bbb;
+}
+
+body.dark-theme #reaction-menu { background: #2c2c2c; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+body.dark-theme #emoji-picker { background: #2c2c2c; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+body.dark-theme .reaction-badge { background: #2c2c2c; border-color: #444; }
