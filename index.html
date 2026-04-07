@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Private Chat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="login-screen" class="screen">
+        <div class="login-box">
+            <h2>Secure Login</h2>
+            <input type="email" id="email" placeholder="User Email">
+            <div class="password-container">
+                <input type="password" id="password" placeholder="Password">
+                <button type="button" id="toggle-password" aria-label="Toggle password visibility">👁️</button>
+            </div>
+            <button id="login-btn">Enter Chat</button>
+            <p id="error-msg"></p>
+        </div>
+    </div>
+
+    <div id="chat-screen" class="screen hidden">
+        <div id="chat-header">
+            <h3>Private Room</h3>
+            <button id="logout-btn">Leave</button>
+        </div>
+
+        <div id="chat-messages">
+        </div>
+
+        <div id="presence-indicator" class="hidden">👀</div>
+
+        <div id="chat-input-area">
+            <input type="text" id="message-input" placeholder="Message..." autocomplete="off">
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+
+</html>
