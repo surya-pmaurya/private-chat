@@ -97,12 +97,23 @@ body {
 
 /* Instagram Style Message Bubbles */
 .message {
+    position: relative;
     max-width: 75%;
     padding: 10px 15px;
     border-radius: 20px;
     word-wrap: break-word;
     font-size: 15px;
     line-height: 1.4;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Audio Player Styling */
+.message audio {
+    max-width: 230px;
+    height: 35px;
+    margin-top: 6px;
+    outline: none;
 }
 
 .message.sent {
@@ -119,13 +130,76 @@ body {
     border-bottom-left-radius: 4px;
 }
 
+/* Date Separator */
+.date-separator {
+    align-self: center;
+    background-color: rgba(0, 0, 0, 0.08);
+    color: #555;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 6px 14px;
+    border-radius: 12px;
+    margin: 8px 0;
+}
+
+/* Read Receipts Meta */
+.message-meta {
+    font-size: 12px;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px; /* Space between time and ticks */
+}
+
+.message.sent .message-meta {
+    align-self: flex-end;
+}
+
+.message.received .message-meta {
+    align-self: flex-start;
+}
+
+.message-time {
+    opacity: 0.85;
+    font-size: 11px;
+}
+
+.message-ticks {
+    font-weight: bold;
+    letter-spacing: -2px; /* Pulls the double ticks closer together */
+    margin-right: 3px;
+}
+
+.tick-sent, .tick-delivered { color: #e0e0e0; }
+.tick-seen { 
+    color: #4df8ff; /* Bright Cyan to stand out on the blue bubble */
+    text-shadow: 0 1px 1px rgba(0,0,0,0.2); 
+}
+
+/* Delete Button */
+.delete-btn {
+    position: absolute;
+    left: -32px; /* Pulls the icon outside and to the left of the message box */
+    top: 50%;
+    transform: translateY(-50%); /* Centers it vertically beside the box */
+    cursor: pointer;
+    font-size: 20px; /* Slightly larger for easier tapping outside the box */
+    font-weight: bold;
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+    color: transparent;
+    text-shadow: 0 0 0 #ed4956; /* Forces the native emoji to render as solid red */
+}
+.delete-btn:hover {
+    opacity: 1;
+}
+
 /* Snapchat Style Presence Indicator */
 #presence-indicator {
-    background: rgba(0,0,0,0.6);
     color: white;
     padding: 6px 14px;
     border-radius: 15px;
-    font-size: 12px;
+    font-size: 20px;
     font-weight: bold;
     align-self: flex-start;
     margin: 0 0 10px 15px;
@@ -156,6 +230,16 @@ body {
     outline: none;
 }
 
+#mic-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+.recording { color: #ed4956 !important; animation: pulse 1s infinite; }
+
 #send-btn {
     background: none;
     border: none;
@@ -164,4 +248,10 @@ body {
     font-size: 16px;
     margin-left: 15px;
     cursor: pointer;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
 }
