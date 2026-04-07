@@ -31,15 +31,23 @@ const sendBtn = document.getElementById("send-btn");
 const messageInput = document.getElementById("message-input");
 const chatMessages = document.getElementById("chat-messages");
 const logoutBtn = document.getElementById("logout-btn");
-const presenceIndicator = document.getElementById("presence-indicator");
 const themeToggle = document.getElementById("theme-toggle");
 const reactionMenu = document.getElementById("reaction-menu");
 const emojiPicker = document.getElementById("emoji-picker");
 const moreEmojisBtn = document.getElementById("more-emojis-btn");
+const typingIndicator = document.getElementById("typing-indicator");
+const replyPreview = document.getElementById("reply-preview");
+const replyText = document.getElementById("reply-text");
+const cancelReplyBtn = document.getElementById("cancel-reply-btn");
 
 let currentUser = null;
 let unreadMessages = [];
 let activeMessageIdForReaction = null;
+let replyingToMessage = null;
+let typingTimeout = null;
+let isTyping = false;
+let knownMessageIds = new Set();
+let isInitialLoad = true;
 
 // --- TOGGLE PASSWORD VISIBILITY ---
 togglePasswordBtn.addEventListener("click", () => {
@@ -63,6 +71,11 @@ themeToggle.addEventListener("click", () => {
 
 // --- 1. LOGIN LOGIC ---
 loginBtn.addEventListener("click", async () => {
+  // Ask for notification permissions if not already granted or denied
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+
   try {
     errorMsg.innerText = ""; // Clear old errors
     await signInWithEmailAndPassword(
@@ -85,6 +98,8 @@ onAuthStateChanged(auth, (user) => {
     setupPresence();
   } else {
     currentUser = null;
+    knownMessageIds.clear(); // Reset tracked messages
+    isInitialLoad = true;    // Reset load state
     loginScreen.classList.remove("hidden");
     chatScreen.classList.add("hidden");
   }
@@ -97,19 +112,53 @@ async function sendMessage() {
 
   messageInput.value = ""; // Clear input immediately
 
+  // Instantly clear typing status
+  isTyping = false;
+  clearTimeout(typingTimeout);
+  setDoc(doc(db, "room", "typingStatus"), { [currentUser.email]: false }, { merge: true });
+
   // Save to Firestore
   await addDoc(collection(db, "messages"), {
     text: text,
     user: currentUser.email,
     createdAt: serverTimestamp(), // Uses Firebase's server time to prevent timezone bugs
-    status: "sent" // Default status for new messages
+    status: "sent", // Default status for new messages
+    replyTo: replyingToMessage || null // Attach reply payload if it exists
   });
+
+  // Clear reply state
+  replyingToMessage = null;
+  replyPreview.classList.add("hidden");
 }
 
 // Send on Button Click or "Enter" key press
 sendBtn.addEventListener("click", sendMessage);
 messageInput.addEventListener("keypress", (e) => {
   if (e.key === "Enter") sendMessage();
+});
+
+// Listen for typing to update Indicator
+messageInput.addEventListener("input", () => {
+  if (!currentUser) return;
+  const typingRef = doc(db, "room", "typingStatus");
+  
+  // Only send the database request once when you begin typing
+  if (!isTyping) {
+    isTyping = true;
+    setDoc(typingRef, { [currentUser.email]: true }, { merge: true });
+  }
+  
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    isTyping = false;
+    setDoc(typingRef, { [currentUser.email]: false }, { merge: true });
+  }, 1500); // Wait 1.5 seconds after last keystroke to clear typing status
+});
+
+// Cancel Reply
+cancelReplyBtn.addEventListener("click", () => {
+  replyingToMessage = null;
+  replyPreview.classList.add("hidden");
 });
 
 // --- FIX MOBILE KEYBOARD PANNING ---
@@ -164,7 +213,12 @@ micBtn.addEventListener("click", async () => {
             user: currentUser.email,
             createdAt: serverTimestamp(),
             status: "sent",
+            replyTo: replyingToMessage || null
           });
+
+          // Clear reply state after sending voice note
+          replyingToMessage = null;
+          replyPreview.classList.add("hidden");
         };
       };
       
@@ -254,6 +308,8 @@ function loadMessages() {
 
     snapshot.forEach((docSnap) => {
       const data = docSnap.data();
+      const isNewMessage = !knownMessageIds.has(docSnap.id);
+      knownMessageIds.add(docSnap.id);
 
       // Handle Firebase serverTimestamp pending state (null locally at first)
       const timestamp = data.createdAt ? data.createdAt.toDate() : new Date();
@@ -280,6 +336,14 @@ function loadMessages() {
       const msgDiv = document.createElement("div");
       msgDiv.classList.add("message");
 
+      // If this message is a reply to another message, render the nested reply box
+      if (data.replyTo) {
+        const replyBox = document.createElement("div");
+        replyBox.classList.add("message-reply");
+        replyBox.innerText = data.replyTo.text;
+        msgDiv.appendChild(replyBox);
+      }
+
       const textSpan = document.createElement("span");
       textSpan.innerText = data.text;
       msgDiv.appendChild(textSpan);
@@ -301,6 +365,45 @@ function loadMessages() {
       timeSpan.classList.add("message-time");
       timeSpan.innerText = timeString;
       metaDiv.appendChild(timeSpan);
+
+      // Swipe to Reply Touch Interactions
+      let startX = 0;
+      let currentX = 0;
+
+      msgDiv.addEventListener("touchstart", (e) => {
+        startX = e.touches[0].clientX;
+      }, { passive: true });
+
+      msgDiv.addEventListener("touchmove", (e) => {
+        if (!startX) return;
+        currentX = e.touches[0].clientX;
+        const diff = currentX - startX;
+        if (diff > 0 && diff < 80) { // Limit swipe to 80px strictly to the right
+          msgDiv.style.transform = `translateX(${diff}px)`;
+          msgDiv.style.transition = 'none'; // Disable CSS transition for live drag
+        }
+      }, { passive: true });
+
+      const handleTouchEnd = () => {
+        if (!startX || !currentX) return;
+        const diff = currentX - startX;
+        
+        // Snap back to original position
+        msgDiv.style.transform = ``;
+        msgDiv.style.transition = ''; 
+        
+        if (diff > 50) { // If dragged more than 50px, activate the reply
+          replyingToMessage = { id: docSnap.id, text: data.text, user: data.user };
+          replyText.innerText = data.text;
+          replyPreview.classList.remove("hidden");
+          messageInput.focus();
+        }
+        startX = 0;
+        currentX = 0;
+      };
+
+      msgDiv.addEventListener("touchend", handleTouchEnd, { passive: true });
+      msgDiv.addEventListener("touchcancel", handleTouchEnd, { passive: true }); // Failsafe if gesture is interrupted
 
       // Reaction Context Menu (Long Press / Right Click)
       msgDiv.addEventListener("contextmenu", (e) => {
@@ -365,6 +468,15 @@ function loadMessages() {
         msgDiv.classList.add("received");
         msgDiv.appendChild(metaDiv);
 
+        // Trigger Notification if it's a newly received message and the chat isn't in focus
+        if (isNewMessage && !isInitialLoad && !document.hasFocus()) {
+          if ("Notification" in window && Notification.permission === "granted") {
+            const senderName = data.user.split("@")[0];
+            const bodyText = data.audioUrl ? "🎵 Sent a voice note" : data.text;
+            new Notification(`Message from ${senderName}`, { body: bodyText });
+          }
+        }
+
         // Update message status if we are receiving it
         if (data.status !== "seen") {
           if (document.hasFocus()) {
@@ -382,6 +494,8 @@ function loadMessages() {
 
       chatMessages.appendChild(msgDiv);
     });
+
+    isInitialLoad = false; // Initial batch of messages loaded, allow notifications for subsequent messages
 
     // Auto-scroll to the bottom of the chat
     chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -413,6 +527,24 @@ window.addEventListener("blur", () => {
 // --- 4. PRESENCE SYSTEM (Snapchat Style) ---
 function setupPresence() {
   const presenceRef = doc(db, "room", "activeUsers");
+  const typingRef = doc(db, "room", "typingStatus");
+
+  let friendIsActive = false;
+  let activeTypingUsers = [];
+
+  function updateIndicatorUI() {
+    if (activeTypingUsers.length > 0) {
+      typingIndicator.innerText = "Typing...";
+      typingIndicator.classList.remove("hidden");
+      chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll down to show indicator
+    } else if (friendIsActive) {
+      typingIndicator.innerText = "👀"; // Fallback to eye when online but not typing
+      typingIndicator.classList.remove("hidden");
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    } else {
+      typingIndicator.classList.add("hidden");
+    }
+  }
 
   // Tell the database "I am here" only if the window is currently focused
   setDoc(presenceRef, { [currentUser.email]: document.hasFocus() }, { merge: true });
@@ -422,15 +554,21 @@ function setupPresence() {
     const data = snapshot.data();
     if (data) {
       // Check if any email other than ours is set to true
-      const friendIsActive = Object.keys(data).some(
+      friendIsActive = Object.keys(data).some(
         (email) => email !== currentUser.email && data[email] === true,
       );
+      updateIndicatorUI();
+    }
+  });
 
-      if (friendIsActive) {
-        presenceIndicator.classList.remove("hidden");
-      } else {
-        presenceIndicator.classList.add("hidden");
-      }
+  // Listen for Live Typing Status
+  onSnapshot(typingRef, (snapshot) => {
+    const data = snapshot.data();
+    if (data) {
+      activeTypingUsers = Object.keys(data).filter(
+        (email) => email !== currentUser.email && data[email] === true
+      );
+      updateIndicatorUI();
     }
   });
 

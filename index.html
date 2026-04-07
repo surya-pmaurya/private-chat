@@ -35,13 +35,20 @@
         <div id="chat-messages">
         </div>
 
-        <div id="presence-indicator" class="hidden">👀</div>
-
         <div id="reaction-menu" class="hidden">
             <span class="quick-emoji">👍</span><span class="quick-emoji">❤️</span><span class="quick-emoji">😂</span><span class="quick-emoji">😮</span><span class="quick-emoji">😢</span><span id="more-emojis-btn">➕</span>
         </div>
 
         <div id="emoji-picker" class="hidden">
+        </div>
+
+        <div id="typing-indicator" class="hidden">typing...</div>
+        
+        <div id="reply-preview" class="hidden">
+            <div class="reply-content">
+                <span id="reply-text"></span>
+            </div>
+            <button id="cancel-reply-btn" aria-label="Cancel Reply">✖</button>
         </div>
 
         <div id="chat-input-area">
