@@ -94,7 +94,25 @@ body {
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-#chat-header h3 { font-size: 18px; }
+.chat-header-info {
+    display: flex;
+    flex-direction: column;
+}
+#chat-header h3 { font-size: 18px; line-height: 1.2; }
+#last-seen { 
+    font-size: 12px; 
+    color: #888; 
+    margin-top: 2px; 
+    opacity: 1;
+    max-height: 20px;
+    transition: opacity 0.4s ease, max-height 0.4s ease, margin-top 0.4s ease;
+}
+#last-seen.fade-out {
+    opacity: 0;
+    max-height: 0;
+    margin-top: 0;
+    overflow: hidden;
+}
 #theme-toggle { background: none; border: none; font-size: 18px; cursor: pointer; transition: transform 0.3s ease; }
 #theme-toggle:hover { transform: scale(1.1); }
 #logout-btn { background: none; border: none; color: #ed4956; font-weight: bold; font-size: 14px; cursor: pointer; }
@@ -214,6 +232,7 @@ body {
     background-color: #EFEFEF;
     color: black;
     border-bottom-left-radius: 4px;
+    margin-left: 25px; /* Makes room for the 3-dot button on the left edge */
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -296,7 +315,7 @@ body {
 }
 .msg-options-btn:hover { opacity: 1; }
 .message.sent .msg-options-btn { right: -30px; }
-.message.received .msg-options-btn { right: -30px; }
+.message.received .msg-options-btn { left: -30px; }
 
 /* Message Options Context Menu */
 #message-options-menu {
@@ -510,6 +529,7 @@ body.dark-theme #reply-preview {
 
 body.dark-theme .login-box h2,
 body.dark-theme #chat-header h3 { color: #e0e0e0; }
+body.dark-theme #last-seen { color: #aaa; }
 
 body.dark-theme .login-box input,
 body.dark-theme #message-input {

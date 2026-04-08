@@ -43,6 +43,7 @@ const typingIndicator = document.getElementById("typing-indicator");
 const replyPreview = document.getElementById("reply-preview");
 const replyText = document.getElementById("reply-text");
 const cancelReplyBtn = document.getElementById("cancel-reply-btn");
+const lastSeenEl = document.getElementById("last-seen");
 
 let currentUser = null;
 let unreadMessages = [];
@@ -90,6 +91,9 @@ loginBtn.addEventListener("click", async () => {
     );
   } catch (error) {
     errorMsg.innerText = "Login Failed: Check email/password.";
+    setTimeout(() => {
+      errorMsg.innerText = "";
+    }, 5000);
   }
 });
 
@@ -99,6 +103,11 @@ onAuthStateChanged(auth, (user) => {
     currentUser = user;
     loginScreen.classList.add("hidden");
     chatScreen.classList.remove("hidden");
+
+    // Request notification permission for auto-logged-in users
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
     loadMessages();
     setupPresence();
   } else {
@@ -169,6 +178,11 @@ cancelReplyBtn.addEventListener("click", () => {
 // --- FIX MOBILE KEYBOARD PANNING ---
 // Forces the browser to keep the navbar at the top when the keyboard opens
 messageInput.addEventListener("focus", () => {
+
+  // Fallback: Request permission upon user interaction if it wasn't triggered
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
   setTimeout(() => {
     window.scrollTo(0, 0);
     document.body.scrollTop = 0;
@@ -606,8 +620,8 @@ function loadMessages() {
         msgDiv.classList.add("received");
         msgDiv.appendChild(metaDiv);
 
-        // Trigger Notification if it's a newly received message and the chat isn't in focus
-        if (isNewMessage && !isInitialLoad && !document.hasFocus()) {
+        // Trigger Notification if it's a newly received message
+        if (isNewMessage && !isInitialLoad) {
           if ("Notification" in window && Notification.permission === "granted") {
             const senderName = data.user.split("@")[0];
             const bodyText = data.audioUrl ? "🎵 Sent a voice note" : data.text;
@@ -659,6 +673,7 @@ window.addEventListener("blur", () => {
   // Update presence to inactive when user switches tabs or minimizes
   if (currentUser) {
     setDoc(doc(db, "room", "activeUsers"), { [currentUser.email]: false }, { merge: true });
+    setDoc(doc(db, "room", "lastSeen"), { [currentUser.email]: serverTimestamp() }, { merge: true });
   }
 });
 
@@ -666,9 +681,47 @@ window.addEventListener("blur", () => {
 function setupPresence() {
   const presenceRef = doc(db, "room", "activeUsers");
   const typingRef = doc(db, "room", "typingStatus");
+  const lastSeenRef = doc(db, "room", "lastSeen");
 
   let friendIsActive = false;
   let activeTypingUsers = [];
+  let friendEmail = null;
+  let friendLastSeenDate = null;
+  let lastSeenTimeout = null;
+
+  function updateLastSeenUI() {
+    if (!friendEmail) {
+      lastSeenEl.classList.add("fade-out");
+      return;
+    }
+
+    lastSeenEl.classList.remove("hidden"); // Clear initial HTML hidden property
+    void lastSeenEl.offsetWidth; // Force a browser reflow so the transition actually plays
+    lastSeenEl.classList.remove("fade-out");
+
+    if (friendIsActive) {
+      lastSeenEl.innerText = "Online";
+    } else if (friendLastSeenDate) {
+      const dateOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+      const msgDate = friendLastSeenDate.toLocaleDateString(undefined, dateOptions);
+      const today = new Date().toLocaleDateString(undefined, dateOptions);
+      const yesterday = new Date(Date.now() - 86400000).toLocaleDateString(undefined, dateOptions);
+      
+      let displayDate = msgDate;
+      if (msgDate === today) displayDate = "today";
+      else if (msgDate === yesterday) displayDate = "yesterday";
+      else displayDate = "on " + msgDate;
+
+      const timeString = friendLastSeenDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      lastSeenEl.innerText = `Last seen ${displayDate} at ${timeString}`;
+    } 
+
+    // Hide the text 5 seconds after it updates
+    clearTimeout(lastSeenTimeout);
+    lastSeenTimeout = setTimeout(() => {
+      lastSeenEl.classList.add("fade-out");
+    }, 5000);
+  }
 
   function updateIndicatorUI() {
     if (activeTypingUsers.length > 0) {
@@ -691,11 +744,29 @@ function setupPresence() {
   onSnapshot(presenceRef, (snapshot) => {
     const data = snapshot.data();
     if (data) {
-      // Check if any email other than ours is set to true
-      friendIsActive = Object.keys(data).some(
-        (email) => email !== currentUser.email && data[email] === true,
-      );
+      friendIsActive = false;
+      for (const email of Object.keys(data)) {
+        if (email !== currentUser.email) {
+          friendEmail = email; // Store the friend's email
+          if (data[email] === true) friendIsActive = true;
+        }
+      }
       updateIndicatorUI();
+      updateLastSeenUI();
+    }
+  });
+
+  // Listen for Last Seen Status
+  onSnapshot(lastSeenRef, (snapshot) => {
+    const data = snapshot.data();
+    if (data) {
+      for (const email of Object.keys(data)) {
+        if (email !== currentUser.email) friendEmail = email;
+      }
+      if (friendEmail && data[friendEmail]) {
+        friendLastSeenDate = data[friendEmail].toDate ? data[friendEmail].toDate() : new Date();
+        updateLastSeenUI();
+      }
     }
   });
 
@@ -713,16 +784,19 @@ function setupPresence() {
   // Tell database "I left" when closing the tab
   window.addEventListener("beforeunload", () => {
     setDoc(presenceRef, { [currentUser.email]: false }, { merge: true });
+    setDoc(lastSeenRef, { [currentUser.email]: serverTimestamp() }, { merge: true });
   });
 }
 
 // --- 5. LOGOUT LOGIC ---
 logoutBtn.addEventListener("click", () => {
   const presenceRef = doc(db, "room", "activeUsers");
+  const lastSeenRef = doc(db, "room", "lastSeen");
   // Tell database we are leaving before signing out
-  setDoc(presenceRef, { [currentUser.email]: false }, { merge: true }).then(
-    () => {
-      signOut(auth);
-    },
-  );
+  Promise.all([
+    setDoc(presenceRef, { [currentUser.email]: false }, { merge: true }),
+    setDoc(lastSeenRef, { [currentUser.email]: serverTimestamp() }, { merge: true })
+  ]).then(() => {
+    signOut(auth);
+  });
 });
