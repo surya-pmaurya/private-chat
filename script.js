@@ -83,7 +83,7 @@ loginBtn.addEventListener("click", async () => {
   }
 
   try {
-    errorMsg.innerText = ""; // Clear old errors
+    errorMsg.innerText = "";
     await signInWithEmailAndPassword(
       auth,
       emailInput.value.trim(),
@@ -112,8 +112,8 @@ onAuthStateChanged(auth, (user) => {
     setupPresence();
   } else {
     currentUser = null;
-    knownMessageIds.clear(); // Reset tracked messages
-    isInitialLoad = true;    // Reset load state
+    knownMessageIds.clear(); 
+    isInitialLoad = true;
     loginScreen.classList.remove("hidden");
     chatScreen.classList.add("hidden");
   }
@@ -124,7 +124,7 @@ async function sendMessage() {
   const text = messageInput.value.trim();
   if (!text || !currentUser) return;
 
-  messageInput.value = ""; // Clear input immediately
+  messageInput.value = ""; 
 
   // Instantly clear typing status
   isTyping = false;
@@ -135,9 +135,9 @@ async function sendMessage() {
   await addDoc(collection(db, "messages"), {
     text: text,
     user: currentUser.email,
-    createdAt: serverTimestamp(), // Uses Firebase's server time to prevent timezone bugs
-    status: "sent", // Default status for new messages
-    replyTo: replyingToMessage || null // Attach reply payload if it exists
+    createdAt: serverTimestamp(), 
+    status: "sent", 
+    replyTo: replyingToMessage || null 
   });
 
   // Clear reply state
@@ -166,7 +166,7 @@ messageInput.addEventListener("input", () => {
   typingTimeout = setTimeout(() => {
     isTyping = false;
     setDoc(typingRef, { [currentUser.email]: false }, { merge: true });
-  }, 1500); // Wait 1.5 seconds after last keystroke to clear typing status
+  }, 1500); 
 });
 
 // Cancel Reply
@@ -176,7 +176,6 @@ cancelReplyBtn.addEventListener("click", () => {
 });
 
 // --- FIX MOBILE KEYBOARD PANNING ---
-// Forces the browser to keep the navbar at the top when the keyboard opens
 messageInput.addEventListener("focus", () => {
 
   // Fallback: Request permission upon user interaction if it wasn't triggered
@@ -216,7 +215,7 @@ micBtn.addEventListener("click", async () => {
       
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-        audioChunks = []; // Reset chunks for next recording
+        audioChunks = [];
 
         // Convert the Audio Blob to a Base64 String (The Free Workaround!)
         const reader = new FileReader();
@@ -228,7 +227,7 @@ micBtn.addEventListener("click", async () => {
           // Save the voice note as a message directly in Firestore
           await addDoc(collection(db, "messages"), {
             text: "🎵 Voice Note",
-            audioUrl: base64String, // We pass the long text string into the audioUrl
+            audioUrl: base64String, 
             user: currentUser.email,
             createdAt: serverTimestamp(),
             status: "sent",
@@ -251,7 +250,7 @@ micBtn.addEventListener("click", async () => {
     }
   } else {
     mediaRecorder.stop();
-    mediaRecorder.stream.getTracks().forEach(track => track.stop()); // Completely release mic
+    mediaRecorder.stream.getTracks().forEach(track => track.stop()); 
     isRecording = false;
     micBtn.classList.remove("recording");
     micBtn.innerText = "🎙️";
@@ -291,11 +290,11 @@ emojiList.forEach(emojiChar => {
 
 // Toggle the extended emoji picker when clicking the + button
 moreEmojisBtn.addEventListener("click", (e) => {
-  e.stopPropagation(); // Prevent the document click listener from hiding it immediately
+  e.stopPropagation(); 
   const rect = reactionMenu.getBoundingClientRect();
   
   let left = rect.left;
-  if (left + 260 > window.innerWidth) left = window.innerWidth - 270; // Keep within screen bounds
+  if (left + 260 > window.innerWidth) left = window.innerWidth - 270;
   emojiPicker.style.left = `${left}px`;
 
   // Position above or below the reaction menu based on available screen space
@@ -337,7 +336,7 @@ menuDelete.addEventListener("click", async () => {
 // Hide menus when clicking elsewhere
 document.addEventListener("click", (e) => {
   if (!reactionMenu.classList.contains("hidden") && !reactionMenu.contains(e.target) && !emojiPicker.contains(e.target)) {
-    reactionMenu.classList.add("hidden"); // Hide if clicking anywhere else
+    reactionMenu.classList.add("hidden"); 
     emojiPicker.classList.add("hidden");
     activeMessageIdForReaction = null;
   }
@@ -354,8 +353,8 @@ function loadMessages() {
 
   // onSnapshot listens for real-time updates
   onSnapshot(q, (snapshot) => {
-    chatMessages.innerHTML = ""; // Clear the UI before reloading
-    unreadMessages = []; // Reset unread pool on every reload
+    chatMessages.innerHTML = ""; 
+    unreadMessages = []; 
     let lastDateString = null;
 
     snapshot.forEach((docSnap) => {
@@ -476,7 +475,7 @@ function loadMessages() {
         audioContainer.appendChild(playBtn);
         audioContainer.appendChild(slider);
         audioContainer.appendChild(timerSpan);
-        audioContainer.appendChild(audioEl); // Hidden element driving the audio
+        audioContainer.appendChild(audioEl); 
         msgDiv.appendChild(audioContainer);
       }
 
@@ -502,9 +501,9 @@ function loadMessages() {
         if (!startX) return;
         currentX = e.touches[0].clientX;
         const diff = currentX - startX;
-        if (Math.abs(diff) > 0 && Math.abs(diff) < 80) { // Limit swipe to 80px in either direction
+        if (Math.abs(diff) > 0 && Math.abs(diff) < 80) { 
           msgDiv.style.transform = `translateX(${diff}px)`;
-          msgDiv.style.transition = 'none'; // Disable CSS transition for live drag
+          msgDiv.style.transition = 'none'; 
         }
       }, { passive: true });
 
@@ -516,7 +515,7 @@ function loadMessages() {
         msgDiv.style.transform = ``;
         msgDiv.style.transition = ''; 
         
-        if (Math.abs(diff) > 50) { // If dragged more than 50px in either direction, activate the reply
+        if (Math.abs(diff) > 50) { 
           replyingToMessage = { id: docSnap.id, text: data.text, user: data.user };
           replyText.innerText = data.text;
           replyPreview.classList.remove("hidden");
@@ -527,24 +526,24 @@ function loadMessages() {
       };
 
       msgDiv.addEventListener("touchend", handleTouchEnd, { passive: true });
-      msgDiv.addEventListener("touchcancel", handleTouchEnd, { passive: true }); // Failsafe if gesture is interrupted
+      msgDiv.addEventListener("touchcancel", handleTouchEnd, { passive: true });
 
       // Reaction Context Menu (Long Press / Right Click)
       msgDiv.addEventListener("contextmenu", (e) => {
-        e.preventDefault(); // Prevent standard right-click menu
+        e.preventDefault(); 
         activeMessageIdForReaction = docSnap.id;
         
         const rect = msgDiv.getBoundingClientRect();
-        let left = rect.left + (rect.width / 2) - 140; // Center the slightly wider menu (approx 280px)
-        left = Math.max(10, Math.min(left, window.innerWidth - 290)); // Increase screen boundary so it doesn't push off the right side
+        let left = rect.left + (rect.width / 2) - 140; 
+        left = Math.max(10, Math.min(left, window.innerWidth - 290)); 
         
-        let top = rect.top - 55; // Show above message
-        if (top < 60) top = rect.bottom + 10; // If too close to top edge, show below message
+        let top = rect.top - 55; 
+        if (top < 60) top = rect.bottom + 10; 
         
         reactionMenu.style.left = `${left}px`;
         reactionMenu.style.top = `${top}px`;
         reactionMenu.classList.remove("hidden");
-        emojiPicker.classList.add("hidden"); // Reset the expanded picker if open
+        emojiPicker.classList.add("hidden");
       });
 
       // Render Reaction Badge
@@ -553,8 +552,8 @@ function loadMessages() {
         badge.classList.add("reaction-badge");
         badge.innerText = data.reaction;
         badge.onclick = async (e) => {
-          e.stopPropagation(); // Prevent bubbling up
-          await updateDoc(doc(db, "messages", docSnap.id), { reaction: null }); // Removes reaction if clicked again
+          e.stopPropagation(); 
+          await updateDoc(doc(db, "messages", docSnap.id), { reaction: null });
         };
         msgDiv.appendChild(badge);
       }
@@ -572,10 +571,10 @@ function loadMessages() {
         else menuDelete.style.display = "none";
 
         const rect = optionsBtn.getBoundingClientRect();
-        let left = rect.right; // Shift popup menu to spawn on the right side
-        if (left + 150 > window.innerWidth) left = window.innerWidth - 160; // Flip left if off-screen
+        let left = rect.right; 
+        if (left + 150 > window.innerWidth) left = window.innerWidth - 160; 
         let top = rect.bottom;
-        if (top + 160 > window.innerHeight) top = rect.top - 160; // Keep on screen
+        if (top + 160 > window.innerHeight) top = rect.top - 160; 
         
         messageOptionsMenu.style.left = `${left}px`;
         messageOptionsMenu.style.top = `${top}px`;
@@ -615,7 +614,7 @@ function loadMessages() {
 
         metaDiv.appendChild(ticks);
         msgDiv.appendChild(metaDiv);
-        msgDiv.appendChild(deleteBtn); // Attach to the outer message bubble for absolute positioning
+        msgDiv.appendChild(deleteBtn); 
       } else {
         msgDiv.classList.add("received");
         msgDiv.appendChild(metaDiv);
@@ -647,7 +646,7 @@ function loadMessages() {
       chatMessages.appendChild(msgDiv);
     });
 
-    isInitialLoad = false; // Initial batch of messages loaded, allow notifications for subsequent messages
+    isInitialLoad = false; 
 
     // Auto-scroll to the bottom of the chat
     chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -695,8 +694,8 @@ function setupPresence() {
       return;
     }
 
-    lastSeenEl.classList.remove("hidden"); // Clear initial HTML hidden property
-    void lastSeenEl.offsetWidth; // Force a browser reflow so the transition actually plays
+    lastSeenEl.classList.remove("hidden"); 
+    void lastSeenEl.offsetWidth; 
     lastSeenEl.classList.remove("fade-out");
 
     if (friendIsActive) {
@@ -727,9 +726,9 @@ function setupPresence() {
     if (activeTypingUsers.length > 0) {
       typingIndicator.innerText = "Typing...";
       typingIndicator.classList.remove("hidden");
-      chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll down to show indicator
+      chatMessages.scrollTop = chatMessages.scrollHeight; 
     } else if (friendIsActive) {
-      typingIndicator.innerText = "👀"; // Fallback to eye when online but not typing
+      typingIndicator.innerText = "👀"; 
       typingIndicator.classList.remove("hidden");
       chatMessages.scrollTop = chatMessages.scrollHeight;
     } else {
@@ -747,7 +746,7 @@ function setupPresence() {
       friendIsActive = false;
       for (const email of Object.keys(data)) {
         if (email !== currentUser.email) {
-          friendEmail = email; // Store the friend's email
+          friendEmail = email;
           if (data[email] === true) friendIsActive = true;
         }
       }
